@@ -4,6 +4,10 @@ const fetch = require('node-fetch');
 const app = express();
 app.use(express.json());
 
+// ⚠️ التوكن والـ ID مباشرة هنا
+const WHATSAPP_TOKEN = 'EAAS9d7VgIfcBShCY3IeKORd8PzDZAQDKP9tWsJsE6UuPK2pKLFR5GhXQEbZCVRuS4UDqTS1KBZCx2U6HkZAj0TX4N0ZASVDv9ZCmR5IzFL9ZAGDXYcJc1NRthBWtv19ZCJJH2ZC1R8NTYrMS3blYWg0MiZCo69W0f9ZB9bSUMDPZBVhTf5D84FPxnwDauasMLqwd1eL0PrNrdG1CkTQFoQZACtVRRUzUOSbNZAZBZCSz1Cszz9lyUoy5YDJUr9M6qumdyOCaueyXJvegGj3v8QapoSvOaiIPgqN7';
+const PHONE_NUMBER_ID = '1243069342230923';
+
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
@@ -26,13 +30,6 @@ app.post('/', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Phone and code required' });
         }
 
-        const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
-        const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
-
-        if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
-            return res.status(500).json({ success: false, error: 'Server configuration error' });
-        }
-
         let formattedPhone = phone.replace(/\D/g, '');
         if (formattedPhone.startsWith('0')) {
             formattedPhone = '967' + formattedPhone.substring(1);
@@ -40,7 +37,7 @@ app.post('/', async (req, res) => {
             formattedPhone = '967' + formattedPhone;
         }
 
-        const message = `🔐 *لوكس كلين*\n\nكود التحقق:\n\n*${code}*\n\n⏰ صالح 5 دقائق`;
+        const message = `🔐 *لوكس كلين*\n\nكود التحقق:\n\n*${code}*\n\n⏰ صالح 5 دقائق\n🔒 لا تشاركه مع أحد`;
 
         const response = await fetch(
             `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
