@@ -4,10 +4,11 @@ const fetch = require('node-fetch');
 const app = express();
 app.use(express.json());
 
-// ⚠️ التوكن والـ ID مباشرة هنا
-const WHATSAPP_TOKEN = 'EAAS9d7VgIfcBShCY3IeKORd8PzDZAQDKP9tWsJsE6UuPK2pKLFR5GhXQEbZCVRuS4UDqTS1KBZCx2U6HkZAj0TX4N0ZASVDv9ZCmR5IzFL9ZAGDXYcJc1NRthBWtv19ZCJJH2ZC1R8NTYrMS3blYWg0MiZCo69W0f9ZB9bSUMDPZBVhTf5D84FPxnwDauasMLqwd1eL0PrNrdG1CkTQFoQZACtVRRUzUOSbNZAZBZCSz1Cszz9lyUoy5YDJUr9M6qumdyOCaueyXJvegGj3v8QapoSvOaiIPgqN7';
+// ⚠️ التوكن الجديد
+const WHATSAPP_TOKEN = 'EAAS9d7VgIfcBSpgsEScIGrBXBj0hD9Mokf1QIkeG0sbULVODLBsR8mvZAMoUqjcbx3pXtHIjTPXBoQwtnrfwIFHKUR65Qtcki9NNH4wathZAZBLijCYmP1w9jVVwuUa0jG6GiB3w3J4ph2ZAtjhLcqvfR00mB2gkS9NavI8FiQrvJZCriutpxdhVZAPTznaMXMDIxsSFOayVZAws4PMZCg2qHZA7RmzGZCGjSJMaoJpDTx6T3ZAFFpAiIoLlDxmZBWJLWdKrISjRGAhLG7uUsK3ZB1Uc0e0fZClm0ZD';
 const PHONE_NUMBER_ID = '1243069342230923';
 
+// CORS
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
@@ -16,6 +17,7 @@ app.use((req, res, next) => {
     next();
 });
 
+// الصفحة الرئيسية (اختبار)
 app.get('/', (req, res) => {
     res.json({
         status: 'LuxClean WhatsApp Worker is running ✅',
@@ -23,13 +25,19 @@ app.get('/', (req, res) => {
     });
 });
 
+// إرسال كود التحقق
 app.post('/', async (req, res) => {
     try {
         const { phone, code } = req.body;
+        
         if (!phone || !code) {
-            return res.status(400).json({ success: false, error: 'Phone and code required' });
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Phone and code required' 
+            });
         }
 
+        // تنسيق الرقم
         let formattedPhone = phone.replace(/\D/g, '');
         if (formattedPhone.startsWith('0')) {
             formattedPhone = '967' + formattedPhone.substring(1);
@@ -37,8 +45,10 @@ app.post('/', async (req, res) => {
             formattedPhone = '967' + formattedPhone;
         }
 
-        const message = `🔐 *لوكس كلين*\n\nكود التحقق:\n\n*${code}*\n\n⏰ صالح 5 دقائق\n🔒 لا تشاركه مع أحد`;
+        // نص الرسالة
+        const message = `🔐 *لوكس كلين*\n\nكود التحقق الخاص بك:\n\n*${code}*\n\n⏰ صالح لمدة 5 دقائق\n🔒 لا تشاركه مع أحد`;
 
+        // إرسال عبر WhatsApp Cloud API
         const response = await fetch(
             `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
             {
@@ -59,15 +69,27 @@ app.post('/', async (req, res) => {
         const data = await response.json();
 
         if (!response.ok) {
-            return res.status(500).json({ success: false, error: data.error?.message || 'Failed' });
+            console.error('WhatsApp API Error:', data);
+            return res.status(500).json({ 
+                success: false, 
+                error: data.error?.message || 'Failed to send' 
+            });
         }
 
-        return res.status(200).json({ success: true, messageId: data.messages?.[0]?.id });
+        return res.status(200).json({ 
+            success: true, 
+            messageId: data.messages?.[0]?.id 
+        });
 
     } catch (error) {
-        return res.status(500).json({ success: false, error: error.message });
+        console.error('Error:', error);
+        return res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
     }
 });
 
+// تشغيل السيرفر
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('✅ Running on port ' + PORT));
