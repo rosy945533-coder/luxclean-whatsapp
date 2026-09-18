@@ -18,6 +18,52 @@ app.use((req, res, next) => {
     next();
 });
 
+// ==================== SEND FUNCTION ====================
+async function sendWhatsApp(phone, code) {
+    let formattedPhone = phone.replace(/\D/g, '');
+    if (formattedPhone.startsWith('0')) {
+        formattedPhone = '967' + formattedPhone.substring(1);
+    } else if (!formattedPhone.startsWith('967')) {
+        formattedPhone = '967' + formattedPhone;
+    }
+
+    const message = `🔐 *لوكس كلين*\n\nكود التحقق الخاص بك:\n\n*${code}*\n\n⏰ صالح لمدة 5 دقائق\n🔒 لا تشاركه مع أحد`;
+
+    const response = await fetch(
+        `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
+        {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                to: formattedPhone,
+                type: 'text',
+                text: { body: message }
+            })
+        }
+    );
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+        return {
+            success: false,
+            error: data.error?.message || 'Failed',
+            fullError: data.error,
+            formattedPhone: formattedPhone
+        };
+    }
+
+    return {
+        success: true,
+        messageId: data.messages?.[0]?.id,
+        formattedPhone: formattedPhone
+    };
+}
+
 // ==================== HOME ====================
 app.get('/', (req, res) => {
     res.json({
@@ -27,21 +73,48 @@ app.get('/', (req, res) => {
     });
 });
 
-// ==================== WEBHOOK VERIFICATION (Meta) ====================
+// ==================== TEST ENDPOINT (GET) ====================
+app.get('/test', async (req, res) => {
+    const phone = req.query.phone;
+    const code = req.query.code || '1234';
+    
+    if (!phone) {
+        return res.json({ 
+            error: 'أضف رقم هاتف: ?phone=773643236&code=1234' 
+        });
+    }
+    
+    try {
+        const result = await sendWhatsApp(phone, code);
+        res.json(result);
+    } catch (error) {
+        res.json({ 
+            success: false, 
+            error: error.message,
+            stack: error.stack
+        });
+    }
+});
+
+// ==================== WEBHOOK ====================
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
     
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-        console.log('✅ Webhook verified');
         res.status(200).send(challenge);
     } else {
         res.sendStatus(403);
     }
 });
 
-// ==================== SEND OTP ====================
+app.post('/webhook', (req, res) => {
+    console.log('📩 Webhook:', JSON.stringify(req.body));
+    res.status(200).send('EVENT_RECEIVED');
+});
+
+// ==================== SEND OTP (POST) ====================
 app.post('/', async (req, res) => {
     try {
         const { phone, code } = req.body;
@@ -52,60 +125,31 @@ app.post('/', async (req, res) => {
                 error: 'Phone and code required' 
             });
         }
-
-        // Format phone number
-        let formattedPhone = phone.replace(/\D/g, '');
-        if (formattedPhone.startsWith('0')) {
-            formattedPhone = '967' + formattedPhone.substring(1);
-        } else if (!formattedPhone.startsWith('967')) {
-            formattedPhone = '967' + formattedPhone;
+        
+        const result = await sendWhatsApp(phone, code);
+        
+        if (result.success) {
+            console.log('✅ Sent:', result.formattedPhone);
+            return res.status(200).json(result);
+        } else {
+            console.error('❌ Failed:', result.error);
+            return res.status(500).json(result);
         }
-
-        // Message text
-        const message = `🔐 *لوكس كلين*\n\nكود التحقق الخاص بك:\n\n*${code}*\n\n⏰ صالح لمدة 5 دقائق\n🔒 لا تشاركه مع أحد`;
-
-        // Send via WhatsApp Cloud API
-        const response = await fetch(
-            `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    messaging_product: 'whatsapp',
-                    to: formattedPhone,
-                    type: 'text',
-                    text: { body: message }
-                })
-            }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            console.error('WhatsApp API Error:', JSON.stringify(data));
-            return res.status(500).json({ 
-                success: false, 
-                error: data.error?.message || 'Failed to send',
-                details: data.error || null
-            });
-        }
-
-        console.log('✅ Message sent to:', formattedPhone);
-        return res.status(200).json({ 
-            success: true, 
-            messageId: data.messages?.[0]?.id 
-        });
-
+        
     } catch (error) {
-        console.error('Server Error:', error);
+        console.error('❌ Server Error:', error);
         return res.status(500).json({ 
             success: false, 
             error: error.message 
         });
     }
+});
+
+// ==================== START ====================
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`✅ LuxClean WhatsApp Worker on port ${PORT}`);
+});    }
 });
 
 // ==================== RECEIVE WEBHOOK EVENTS ====================
