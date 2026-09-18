@@ -1,5 +1,5 @@
 // ==================== LUXCLEAN WHATSAPP API ====================
-const TOKEN = 'EAAS9d7VgIfcBSjNTtsHwo50ZCdqMEVrvaa3POcMP7iR6pLZBfcOLeFQjNbqPlZCogJY9YJrtsVeSLH3KnkVbxoSgrPsx4X1ZAdAKorl50J80SMbFGZBY8R4wf8qVRxtJmpzZBnTQdmvUWayat4ArRioAuYqL5aUBwLlPrHoQnftTvpqvd1hpdqhJZA4Obu4rmLooAZDZD';
+const TOKEN = 'EAAS9d7VgIfcBSlL4MhCoaoV3Qvs2voAmk48POmy1LPOQvE3m7RbOlNQcIX4Y8AloCywWiXY5GOr1zB99vUNUKVtR5gZAFDJ4lAoxM5aYQdj8VTHmQmODtgupUOBnTbZCyZCA0qQnujPk6SQfUpDL71KMcpYZB0T7Uc0jg44Oe74y3Xq5XZAuwCgWPZAziHekMekgZDZD';
 const PHONE_ID = '1243069342230923';
 
 module.exports = async (req, res) => {
