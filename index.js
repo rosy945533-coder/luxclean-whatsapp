@@ -4,11 +4,12 @@ const fetch = require('node-fetch');
 const app = express();
 app.use(express.json());
 
-// ⚠️ التوكن الجديد
-const WHATSAPP_TOKEN = 'EAAS9d7VgIfcBSqfCNRMEdvYzYzb9EWiBjugthUFCYv8RkZC40YZCoIJZAQxIIi2ZBgVcn8cX0aQA4I7A4Qfob3uQjHk26elRqVeicRpH2kA381ZB8nZBKrivVDgp2Ecc9jqi9iZAup5yw4eVWrRfrGv9ir9c8aWEC9sKCASZBPVqBZAc35mPkhSPFGuI8mbdpOzMQAAZDZD';
+// ==================== CONFIG ====================
+const WHATSAPP_TOKEN = 'EAAS9d7VgIfcBSjNTtsHwo50ZCdqMEVrvaa3POcMP7iR6pLZBfcOLeFQjNbqPlZCogJY9YJrtsVeSLH3KnkVbxoSgrPsx4X1ZAdAKorl50J80SMbFGZBY8R4wf8qVRxtJmpzZBnTQdmvUWayat4ArRioAuYqL5aUBwLlPrHoQnftTvpqvd1hpdqhJZA4Obu4rmLooAZDZD';
 const PHONE_NUMBER_ID = '1243069342230923';
+const VERIFY_TOKEN = 'luxclean_verify_2026';
 
-// CORS
+// ==================== CORS ====================
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
@@ -17,15 +18,30 @@ app.use((req, res, next) => {
     next();
 });
 
-// الصفحة الرئيسية (اختبار)
+// ==================== HOME ====================
 app.get('/', (req, res) => {
     res.json({
         status: 'LuxClean WhatsApp Worker is running ✅',
-        time: new Date().toISOString()
+        time: new Date().toISOString(),
+        version: '1.0.0'
     });
 });
 
-// إرسال كود التحقق
+// ==================== WEBHOOK VERIFICATION (Meta) ====================
+app.get('/webhook', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+    
+    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+        console.log('✅ Webhook verified');
+        res.status(200).send(challenge);
+    } else {
+        res.sendStatus(403);
+    }
+});
+
+// ==================== SEND OTP ====================
 app.post('/', async (req, res) => {
     try {
         const { phone, code } = req.body;
@@ -37,7 +53,7 @@ app.post('/', async (req, res) => {
             });
         }
 
-        // تنسيق الرقم
+        // Format phone number
         let formattedPhone = phone.replace(/\D/g, '');
         if (formattedPhone.startsWith('0')) {
             formattedPhone = '967' + formattedPhone.substring(1);
@@ -45,10 +61,10 @@ app.post('/', async (req, res) => {
             formattedPhone = '967' + formattedPhone;
         }
 
-        // نص الرسالة
+        // Message text
         const message = `🔐 *لوكس كلين*\n\nكود التحقق الخاص بك:\n\n*${code}*\n\n⏰ صالح لمدة 5 دقائق\n🔒 لا تشاركه مع أحد`;
 
-        // إرسال عبر WhatsApp Cloud API
+        // Send via WhatsApp Cloud API
         const response = await fetch(
             `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
             {
@@ -69,20 +85,22 @@ app.post('/', async (req, res) => {
         const data = await response.json();
 
         if (!response.ok) {
-            console.error('WhatsApp API Error:', data);
+            console.error('WhatsApp API Error:', JSON.stringify(data));
             return res.status(500).json({ 
                 success: false, 
-                error: data.error?.message || 'Failed to send' 
+                error: data.error?.message || 'Failed to send',
+                details: data.error || null
             });
         }
 
+        console.log('✅ Message sent to:', formattedPhone);
         return res.status(200).json({ 
             success: true, 
             messageId: data.messages?.[0]?.id 
         });
 
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Server Error:', error);
         return res.status(500).json({ 
             success: false, 
             error: error.message 
@@ -90,6 +108,27 @@ app.post('/', async (req, res) => {
     }
 });
 
-// تشغيل السيرفر
+// ==================== RECEIVE WEBHOOK EVENTS ====================
+app.post('/webhook', async (req, res) => {
+    try {
+        const body = req.body;
+        console.log('📩 Webhook received:', JSON.stringify(body));
+        
+        // Handle incoming messages, status updates, etc.
+        if (body.object === 'whatsapp_business_account') {
+            // Process events here if needed
+        }
+        
+        res.status(200).send('EVENT_RECEIVED');
+    } catch (error) {
+        console.error('Webhook Error:', error);
+        res.sendStatus(500);
+    }
+});
+
+// ==================== START SERVER ====================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('✅ Running on port ' + PORT));
+app.listen(PORT, () => {
+    console.log(`✅ LuxClean WhatsApp Worker running on port ${PORT}`);
+    console.log(`📱 Phone Number ID: ${PHONE_NUMBER_ID}`);
+});
